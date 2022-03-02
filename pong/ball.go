@@ -8,7 +8,7 @@ import (
 // Ball is a pong ball
 type Ball struct {
 	Position
-	Radius    float32
+	Radius    float32 `json:"radius"`
 	XVelocity float32
 	YVelocity float32
 	Color     color.Color

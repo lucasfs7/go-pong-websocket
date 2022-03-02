@@ -2,7 +2,7 @@ package pong
 
 import (
 	"github.com/hajimehoshi/ebiten"
-	"github.com/hajimehoshi/ebiten/inpututil"
+	// "github.com/hajimehoshi/ebiten/inpututil"
 	"github.com/hajimehoshi/ebiten/text"
 	"golang.org/x/image/font"
 	"image/color"
@@ -12,15 +12,15 @@ import (
 // Paddle is a pong paddle
 type Paddle struct {
 	Position
-	Score        int
+	Score        int `json:"score"`
 	Speed        float32
-	Width        int
-	Height       int
+	Width        int `json:"width"`
+	Height       int `json:"height"`
 	Color        color.Color
 	Up           ebiten.Key
 	Down         ebiten.Key
 	Img          *ebiten.Image
-	pressed      keysPressed
+	Pressed      keysPressed
 	scorePrinted scorePrinted
 }
 
@@ -31,8 +31,8 @@ const (
 )
 
 type keysPressed struct {
-	up   bool
-	down bool
+	Up   bool
+	Down bool
 }
 
 type scorePrinted struct {
@@ -45,22 +45,9 @@ type scorePrinted struct {
 func (p *Paddle) Update(screen *ebiten.Image) {
 	_, h := screen.Size()
 
-	if inpututil.IsKeyJustPressed(p.Up) {
-		p.pressed.down = false
-		p.pressed.up = true
-	} else if inpututil.IsKeyJustReleased(p.Up) || !ebiten.IsKeyPressed(p.Up) {
-		p.pressed.up = false
-	}
-	if inpututil.IsKeyJustPressed(p.Down) {
-		p.pressed.up = false
-		p.pressed.down = true
-	} else if inpututil.IsKeyJustReleased(p.Down) || !ebiten.IsKeyPressed(p.Down) {
-		p.pressed.down = false
-	}
-
-	if p.pressed.up {
+	if p.Pressed.Up {
 		p.Y -= p.Speed
-	} else if p.pressed.down {
+	} else if p.Pressed.Down {
 		p.Y += p.Speed
 	}
 

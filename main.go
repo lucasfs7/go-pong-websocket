@@ -6,6 +6,8 @@ import (
 	"github.com/hajimehoshi/ebiten/ebitenutil"
 	"github.com/hajimehoshi/ebiten/inpututil"
 	"github.com/jtestard/go-pong/pong"
+	"golang.org/x/net/websocket"
+	"net/http"
 )
 
 // Game is the structure of the game state
@@ -17,6 +19,20 @@ type Game struct {
 	rally    int
 	level    int
 	maxScore int
+	ws       *websocket.Conn
+}
+
+type WsMessage struct {
+	Type   string `json:"type"`
+	Actor  string `json:"actor"`
+	Target string `json:"target"`
+}
+
+type WsGameState struct {
+	Player1 pong.Paddle    `json:"player1"`
+	Player2 pong.Paddle    `json:"player2"`
+	Ball    pong.Ball      `json:"ball"`
+	State   pong.GameState `json:"status"`
 }
 
 const (
@@ -148,6 +164,8 @@ func (g *Game) Update(screen *ebiten.Image) error {
 			g.state = pong.GameOverState
 		}
 
+		websocket.JSON.Send(g.ws, WsGameState{*g.player1, *g.player2, *g.ball, g.state})
+
 	case pong.GameOverState:
 		if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
 			g.reset(screen, pong.StartState)
@@ -179,8 +197,51 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return windowWidth, windowHeight
 }
 
+func (g *Game) handleWsConnection(ws *websocket.Conn) {
+	websocket.JSON.Send(ws, WsGameState{*g.player1, *g.player2, *g.ball, g.state})
+	g.ws = ws
+
+	for {
+		var data WsMessage
+		websocket.JSON.Receive(ws, &data)
+
+		switch data.Type {
+		case "start":
+			g.state = pong.PlayState
+
+		case "keydown", "keyup":
+			if data.Actor == "p1" {
+				g.player1.Pressed.Down = data.Type == "keydown" && data.Target == "down"
+				g.player1.Pressed.Up = data.Type == "keydown" && data.Target == "up"
+			}
+
+			if data.Actor == "p2" {
+				g.player2.Pressed.Down = data.Type == "keydown" && data.Target == "down"
+				g.player2.Pressed.Up = data.Type == "keydown" && data.Target == "up"
+			}
+		}
+	}
+}
+
 func main() {
+	fmt.Println("bootstraping new game...")
 	g := NewGame()
+	ebiten.SetRunnableOnUnfocused(true)
+
+	go func() {
+		fmt.Println("starting websocket server...")
+		http.HandleFunc("/",
+			func(w http.ResponseWriter, req *http.Request) {
+				s := websocket.Server{Handler: websocket.Handler(g.handleWsConnection)}
+				s.ServeHTTP(w, req)
+			})
+		err := http.ListenAndServe(":8080", nil)
+		if err != nil {
+			panic("ListenAndServe: " + err.Error())
+		}
+	}()
+
+	fmt.Println("starting the game...")
 	if err := ebiten.RunGame(g); err != nil {
 		panic(err)
 	}
