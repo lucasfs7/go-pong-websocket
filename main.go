@@ -235,7 +235,7 @@ func main() {
 				s := websocket.Server{Handler: websocket.Handler(g.handleWsConnection)}
 				s.ServeHTTP(w, req)
 			})
-		err := http.ListenAndServe(":8080", nil)
+		err := http.ListenAndServe("0.0.0.0:8080", nil)
 		if err != nil {
 			panic("ListenAndServe: " + err.Error())
 		}
